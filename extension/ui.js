@@ -22,7 +22,7 @@ document.getElementById('app').innerHTML = `
   <div class="notice" id="system-notice" hidden></div><div id="feedback" role="status" aria-live="polite" hidden></div><footer class="footer"><span>나를 통제하는 대신, 나의 선택을 돕습니다.</span><span>LOCAL ONLY · DIGITAL WELLBEING</span></footer>`;
 if (isDashboard) { $('dashboard-link').textContent = '나만의 디지털 웰빙'; $('dashboard-link').removeAttribute('href'); }
 const aiPanel=document.createElement('details');aiPanel.className='card ai-panel';
-aiPanel.innerHTML=`<summary>AI 연결 · <span id="ai-connection-status">확인 중</span></summary><p class="note">AI 사용 시 목적·도메인·페이지 제목이 서버와 OpenRouter로 전달됩니다. 본문·입력 내용·URL 경로와 검색어는 보내지 않습니다. 사용자가 정한 사이트 규칙을 우선 적용합니다.</p><label class="check"><input type="checkbox" id="ai-enabled" checked>미분류 사이트의 AI 관련성 판단 사용</label><label class="field">시연 연결코드 (AI API 키가 아닙니다)<input type="password" id="connection-token" autocomplete="off" placeholder="연결코드 붙여넣기"></label><button id="connect-ai" class="full" style="margin-top:12px">AI 연결</button><p class="note">코드를 입력하지 않거나 AI가 실패하면 기존 규칙으로 작동합니다.</p><a id="web-app-link" target="_blank">GitHub Pages 웹앱 열기 ↗</a>`;
+aiPanel.innerHTML=`<summary>AI 연결 · <span id="ai-connection-status">확인 중</span></summary><p class="note">AI 사용 시 목적·도메인·페이지 제목이 서버와 OpenRouter로 전달됩니다. 본문·입력 내용·URL 경로와 검색어는 보내지 않습니다. YouTube는 영상별 AI 판단, 다른 사이트는 등록 규칙을 우선합니다.</p><label class="check"><input type="checkbox" id="ai-enabled" checked>미분류 사이트의 AI 관련성 판단 사용</label><label class="field">시연 연결코드 (AI API 키가 아닙니다)<input type="password" id="connection-token" autocomplete="off" placeholder="연결코드 붙여넣기"></label><button id="connect-ai" class="full" style="margin-top:12px">AI 연결</button><p class="note">코드를 입력하지 않거나 AI가 실패하면 기존 규칙으로 작동합니다.</p><a id="web-app-link" target="_blank">GitHub Pages 웹앱 열기 ↗</a>`;
 $('form-card').after(aiPanel);$('web-app-link').href=WEB_URL;
 const aiReason=document.createElement('p');aiReason.id='ai-reason';aiReason.className='note';$('current-host').parentElement.parentElement.after(aiReason);
 let state, busy = false, formDirty = false;
@@ -70,7 +70,7 @@ function render() {
     const a = state.active, category = a?.category || 'unsupported';
     $('current-host').textContent = a?.host || '일반 웹사이트 탭을 선택해 주세요';
     const texts = { allowed: '허용', blocked: '방해', unknown: '미분류', unsupported: '측정 제외' };
-    $('category').textContent = a && state.exceptions[a.tabId] === a.host ? '이번만 허용' : texts[category];
+    $('category').textContent = a?.allowOnce ? '이번만 허용' : a?.source==='pending' ? 'AI 판단 중' : texts[category];
     $('category').className = `badge ${category}`;
     $('ai-reason').textContent = a ? `${{ai:'AI 추정',rule:'규칙 기반',fallback:'규칙 기반 대체',pending:'AI 판단 중'}[a.source]||'규칙 기반'} · ${a.reason||''}` : '';
     $('classify-actions').hidden = category !== 'unknown';
@@ -128,4 +128,5 @@ if (globalThis.chrome?.runtime?.id) {
   $('submit').disabled = true;
   feedback('이 화면은 Chrome 확장프로그램 전용입니다. extension 폴더를 로드해 주세요.', true);
 }
+
 

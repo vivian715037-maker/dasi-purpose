@@ -62,7 +62,7 @@ async function main() {
     await web.keyboard.press('Tab'); await web.keyboard.press('Tab'); await web.keyboard.press('Enter');
     await web.locator('[data-wellbeing-overlay]').waitFor({ state: 'detached' });
     let state = await snapshot();
-    assert.equal(state.exceptions[state.active.tabId], 'youtube.com');
+    assert.equal(state.exceptions[state.active.tabId], 'youtube:page:/');
     await web.reload(); await new Promise(r => setTimeout(r, 300));
     assert.equal(await web.locator('[data-wellbeing-overlay]').count(), 0);
     await web.goto('https://example.org/'); await waitForState(s => s.active?.category === 'unknown');

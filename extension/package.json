@@ -1,1 +1,2 @@
-{"private":true,"type":"module","scripts":{"test":"node --test tests/*.test.js","check":"node --check background.js && node --check core.js && node --check content.js && node --check ui.js && node --check ai.js && node --check bridge.js && node --check config.js"}}
+{"private":true,"type":"module","scripts":{"test":"node --test tests/*.test.js","check":"node --check background.js && node --check core.js && node --check content.js && node --check ui.js && node --check ai.js && node --check bridge.js && node --check config.js && node --check video-watch.js"}}
+

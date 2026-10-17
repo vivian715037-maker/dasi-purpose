@@ -1,4 +1,4 @@
-import { freshState, validateSettings, classify, hostFromUrl, dayStats, settle, COOLDOWN } from './core.js';
+import { freshState, validateSettings, classify, hostFromUrl, dayStats, settle, COOLDOWN, isVideoSite, pageScope } from './core.js';
 import { SERVER_URL, WEB_URL } from './config.js';
 import { judgeSite, aiCategory, verifyConnection } from './ai.js';
 
@@ -24,7 +24,7 @@ function scheduleAI(state, tab, key, token) {
     if(aiCache.size>=100) aiCache.clear(); aiCache.set(key,entry);
     serial(async () => {
       const latest=await load(), current=await focusedTab();
-      if(latest.session?.status==='running' && current && fingerprint(latest,current)===key) {
+      if(latest.session?.status==='running' && current) {
         settle(latest,Date.now()); await inspect(latest,Date.now()); await save(latest);
       }
     });
@@ -86,6 +86,7 @@ async function inspect(state, now) {
   const tab = await focusedTab();
   const host = tab?.url?.startsWith(WEB_URL) ? '' : hostFromUrl(tab?.url || '');
   let category = classify(host, state.settings);
+  const ruleCategory=category, scope=pageScope(tab?.url||'');
   state.active = tab ? { tabId: tab.id, host, category, source:'rule', reason: category==='unknown'?'미등록 사이트입니다.':'사용자가 정한 사이트 규칙' } : null;
   const s = state.session;
   if (!s || s.status !== 'running') { state.trackingAt = null; return; }
@@ -93,15 +94,16 @@ async function inspect(state, now) {
   if (!host) return;
   const config=await connection();
   state.aiConnected=!!config.token;
-  if(category==='unknown' && state.settings.aiEnabled !== false) {
+  if((category==='unknown' || isVideoSite(host)) && state.settings.aiEnabled !== false) {
     if(!config.token) {
       state.active.source='fallback';state.active.reason='AI 연결코드를 입력하면 관련성을 판단합니다. 현재는 규칙 기반입니다.';
     } else {
       const key=fingerprint(state,tab), cached=aiCache.get(key);
       if(cached && cached.expires>Date.now()) {
-        if(cached.error) {state.active.source='fallback';state.active.reason='AI 연결 실패 · 규칙 기반으로 작동 중';}
+        if(cached.error) {category=ruleCategory;state.active.category=category;state.active.source='fallback';state.active.reason='AI 연결 실패 · 규칙 기반으로 작동 중';}
         else { category=aiCategory(cached.result); Object.assign(state.active,{category,source:'ai',reason:cached.result.reason,confidence:cached.result.confidence}); }
       } else {
+        category='unknown';state.active.category=category;
         state.active.source='pending';state.active.reason='AI가 목적과 사이트의 관련성을 확인하고 있어요.';
         scheduleAI(state,tab,key,config.token);
       }
@@ -122,9 +124,10 @@ async function inspect(state, now) {
     return;
   }
   const exception = state.exceptions[tab.id];
-  if (exception && exception !== host) delete state.exceptions[tab.id];
-  if (category === 'blocked' && exception !== host && now - (state.cooldowns[host] || 0) >= COOLDOWN) {
-    state.cooldowns[host] = now;
+  if (exception && exception !== scope) delete state.exceptions[tab.id];
+  state.active.allowOnce=exception===scope;
+  if (category === 'blocked' && exception !== scope && now - (state.cooldowns[scope] || 0) >= COOLDOWN) {
+    state.cooldowns[scope] = now;
     dayStats(state, now).detections++;
     await notify(state, 'wellbeing-distraction', '처음의 목적을 기억해 볼까요?', `원래 목표는 “${s.goal}”입니다. 계속 이용하시겠어요?`);
     await overlay(tab.id, state, 'distraction');
@@ -146,7 +149,7 @@ async function command(message, sender) {
   const trustedUI = ['popup.html', 'dashboard.html'].some(page => sender.url === chrome.runtime.getURL(page)) || sender.url?.startsWith(WEB_URL);
   const contentSender = !trustedUI && !!sender.tab;
   if (!trustedUI && !contentSender) throw new Error('지원하지 않는 요청입니다.');
-  if (contentSender && !['RETURN', 'BREAK', 'ALLOW_ONCE', 'DISMISS'].includes(message.type)) throw new Error('지원하지 않는 페이지 요청입니다.');
+  if (contentSender && !['RETURN', 'BREAK', 'ALLOW_ONCE', 'DISMISS', 'PAGE_CHANGED'].includes(message.type)) throw new Error('지원하지 않는 페이지 요청입니다.');
   // A page can act only on its own currently focused tab in a running session.
   if (contentSender) {
     const current = await focusedTab();
@@ -154,6 +157,7 @@ async function command(message, sender) {
       throw new Error('현재 탭에서 실행 중인 세션이 없습니다.');
   }
   switch (message.type) {
+    case 'PAGE_CHANGED': break;
     case 'CONNECT': {
       if(typeof message.token!=='string'||message.token.length<16||message.token.length>200) throw new Error('올바른 연결코드를 입력해 주세요.');
       await verifyConnection(SERVER_URL,message.token);
@@ -201,7 +205,7 @@ async function command(message, sender) {
       if (state.session?.status !== 'running') throw new Error('실행 중인 세션이 없습니다.');
       const tab = contentSender ? sender.tab : await focusedTab();
       const host = hostFromUrl(tab?.url || '');
-      if (host) state.exceptions[tab.id] = host;
+      if (host) state.exceptions[tab.id] = pageScope(tab.url);
       await sendTab(tab?.id, { type: 'WB_CLEAR' }); break;
     }
     case 'DISMISS':

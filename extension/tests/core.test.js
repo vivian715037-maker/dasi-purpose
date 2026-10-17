@@ -1,6 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeDomain, domainList, classify, validateSettings, DEFAULT_SETTINGS, freshState, settle, localDay } from '../core.js';
+import { normalizeDomain, domainList, classify, validateSettings, DEFAULT_SETTINGS, freshState, settle, localDay, pageScope } from '../core.js';
+
+test('YouTube 영상별 예외 키: 영상·쇼츠·공유 링크, 재생시간은 같은 영상',()=>{
+ assert.equal(pageScope('https://www.youtube.com/watch?v=math&t=30'),pageScope('https://youtu.be/math'));
+ assert.equal(pageScope('https://www.youtube.com/shorts/game'),pageScope('https://youtube.com/watch?v=game'));
+ assert.notEqual(pageScope('https://youtube.com/watch?v=math'),pageScope('https://youtube.com/watch?v=game'));
+ assert.equal(pageScope('https://wikipedia.org/wiki/Math'),'wikipedia.org');
+});
 
 test('도메인 정규화: URL, 대소문자, www, 경로, 중복, 한글', () => {
   assert.equal(normalizeDomain('HTTPS://WWW.YouTube.com/watch?v=123'), 'youtube.com');

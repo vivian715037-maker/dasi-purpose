@@ -3,6 +3,14 @@ export const DEFAULT_SETTINGS = {
   allowed: ['wikipedia.org'], blocked: ['youtube.com', 'instagram.com']
 };
 export const COOLDOWN = 120000;
+export function isVideoSite(host) { return host === 'youtu.be' || host === 'youtube.com' || host.endsWith('.youtube.com'); }
+export function pageScope(value) {
+  const host=hostFromUrl(value);
+  if(!isVideoSite(host))return host;
+  const u=new URL(value);
+  const id=host==='youtu.be'?u.pathname.split('/')[1]:u.searchParams.get('v')||(/^\/(shorts|live|embed)\/([^/]+)/.exec(u.pathname)?.[2]);
+  return id ? `youtube:video:${id}` : `youtube:page:${u.pathname}`;
+}
 export function normalizeDomain(input) {
   const value = input.trim();
   if (!value) throw new Error('빈 사이트 주소는 등록할 수 없습니다.');

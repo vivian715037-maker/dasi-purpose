@@ -20,6 +20,7 @@ async function main(){
   await app.locator('#result-label').filter({hasText:'처음의 목적'}).waitFor({timeout:22000});
   console.log('Live AI study/game preview: PASS');
   await app.screenshot({path:path.join(root,'test-results/ai-web.png'),fullPage:true});
+  await app.locator('#allowed').fill('wikipedia.org\nyoutube.com');
   await app.locator('#blocked').fill('');await app.locator('#interval').fill('30');await app.locator('#start').click();
   await app.locator('#live-session').waitFor({state:'visible'});
   await worker.evaluate(async()=>{const {state}=await chrome.storage.local.get('state');state.settings.notifications=false;await chrome.storage.local.set({state});});
@@ -32,6 +33,13 @@ async function main(){
   await wait(s=>s.active?.source==='ai'&&s.active.category==='blocked');
   await tab.locator('[data-wellbeing-overlay]').waitFor({state:'attached'});
   await tab.screenshot({path:path.join(root,'test-results/ai-warning.png'),fullPage:true});
+  // Allowing this game video must not exempt the next video in the same SPA tab.
+  await tab.keyboard.press('Tab');await tab.keyboard.press('Tab');await tab.keyboard.press('Enter');
+  await wait(s=>s.active?.allowOnce===true);
+  await tab.evaluate(()=>{history.pushState({},'', '/watch?v=qa-game-next');document.title='리그오브레전드 게임 플레이 하이라이트 두 번째 영상';document.dispatchEvent(new Event('yt-navigate-finish'));});
+  await wait(s=>s.active?.source==='ai'&&s.active.category==='blocked'&&!s.active.allowOnce);
+  await tab.locator('[data-wellbeing-overlay]').waitFor({state:'attached'});
+  console.log('YouTube allowlist + video-only exception + SPA next video: PASS');
   await tab.keyboard.press('Enter');await tab.waitForURL('https://wikipedia.org/');
   await wait(s=>s.active?.host==='wikipedia.org');
   console.log('Actual tab title change → live AI warning → goal return: PASS');
@@ -39,7 +47,7 @@ async function main(){
   await worker.evaluate(()=>{globalThis.__originalFetch=globalThis.fetch;globalThis.fetch=async(...args)=>String(args[0]).includes('/api/judge')?new Response('',{status:503}):globalThis.__originalFetch(...args);});
   await tab.goto('https://youtube.com/watch?v=failure-test');
   await tab.evaluate(()=>{document.title='네트워크 실패 확인용 다른 제목';});
-  await wait(s=>s.active?.source==='fallback'&&s.active.category==='unknown');
+  await wait(s=>s.active?.source==='fallback'&&s.active.category==='allowed');
   assert.equal(await tab.locator('[data-wellbeing-overlay]').count(),0);
   console.log('Injected 503 → rules/unknown without false block: PASS');
   await worker.evaluate(()=>{globalThis.fetch=globalThis.__originalFetch;});

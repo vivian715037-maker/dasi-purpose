@@ -1,14 +1,14 @@
 {
   "manifest_version": 3,
   "name": "다시, 목적 — 디지털 웰빙 도우미",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "AI로 목적과 사이트의 관련성을 추정하고 복귀·휴식을 돕습니다. AI 실패 시 사이트 규칙으로 작동하고 기록은 로컬에 저장합니다.",
   "permissions": ["storage", "tabs", "alarms", "notifications", "scripting"],
   "host_permissions": ["http://*/*", "https://*/*"],
   "background": { "service_worker": "background.js", "type": "module" },
   "action": { "default_popup": "popup.html", "default_title": "다시, 목적", "default_icon": "icons/icon128.png" },
   "options_page": "dashboard.html",
-  "content_scripts": [{"matches":["https://vivian715037-maker.github.io/dasi-purpose/*"],"js":["bridge.js"],"run_at":"document_start"}],
+  "content_scripts": [{"matches":["https://vivian715037-maker.github.io/dasi-purpose/*"],"js":["bridge.js"],"run_at":"document_start"},{"matches":["https://*.youtube.com/*","https://youtube.com/*","https://youtu.be/*"],"js":["video-watch.js"],"run_at":"document_start"}],
   "icons": { "128": "icons/icon128.png" },
   "content_security_policy": { "extension_pages": "script-src 'self'; object-src 'self'" }
 }
