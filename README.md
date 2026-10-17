@@ -1,0 +1,91 @@
+# 다시, 목적 — AI 디지털 웰빙
+
+**인터넷을 켠 목적을 기억하고, 스스로 돌아오도록 돕는 웹앱 + Chrome 확장프로그램입니다.**
+
+- 웹앱: https://vivian715037-maker.github.io/dasi-purpose/
+- GitHub: https://github.com/vivian715037-maker/dasi-purpose
+- AI 서버: https://dasi-purpose-ai-1017.edupro25909.chatgpt.site/api/health
+
+## 바로 실행
+
+1. 웹앱에서 확장 ZIP 다운로드 → 압축 풀기.
+2. Chrome에서 `chrome://extensions` → 개발자 모드 → 압축해제된 확장프로그램 로드 → `extension` 폴더 선택.
+3. 웹앱 새로고침. 제공받은 **시연 연결코드**를 저장합니다. API 키를 입력하지 않습니다.
+4. 목적·시간·사이트 목록을 입력하고 시작합니다.
+5. 다른 탭을 방문하면 URL·제목을 감지하고, 목적과 관련 없다고 판단하면 알림과 닫을 수 있는 경고를 표시합니다.
+
+이 PC의 `extension`에는 공개 업로드에서 제외한 로컬 시연 설정이 있어 연결코드가 자동 적용됩니다. 이미 설치한 확장은 확장 페이지에서 새로고침하세요. 공개 ZIP에는 연결코드가 없습니다. 로컬 `AI_연결코드.txt`의 코드로 연결하세요.
+
+## 2분 시연
+
+- 목적 `중학교 수학 공부`, 허용 `wikipedia.org`, 방해 목록은 비워 두고 시작.
+- 웹앱에서 ‘수학 강의 예시’ → AI 판단 → 관련 있음.
+- ‘게임 영상 예시’ → AI 판단 → 관련 없음.
+- 실제 다른 탭에서 수학 강의/게임 영상 페이지 열기 → 제목·도메인으로 AI 추정 → 경고의 목표 복귀·이번만 허용 확인.
+- 웹앱으로 돌아와 마지막 판단과 통계 확인.
+- ‘연결 실패 시 동작 보기’는 **실패 상황 체험**이라고 표시되는 규칙 기반 예시입니다. 실제 실패 시에도 같은 방식으로 대체됩니다.
+- 휴식 간격을 1분으로 바꾸면 빠르게 휴식 안내를 시연할 수 있습니다.
+
+## 구조
+
+`GitHub Pages 웹앱 ↔ Chrome 확장 ↔ Sites의 Cloudflare Worker ↔ OpenRouter`
+
+- GitHub Pages는 정적 웹앱을 제공합니다. 다른 사이트 탭은 확장이 감지합니다.
+- 서버는 Sites 플러그인을 통해 Cloudflare Workers 환경에 배포했습니다. OpenRouter 모델은 `openai/gpt-4o-mini`입니다.
+- OpenRouter API 키는 서버 런타임 secret에만 존재합니다. 브라우저 JS·확장·GitHub·ZIP에 포함하지 않습니다.
+- 연결코드는 제공받은 시연 참가자의 서버 호출을 허용하는 별도 코드입니다. API 키가 아니며 공개 저장소에는 올리지 않습니다. 공유한 사람은 AI를 호출할 수 있으므로 시연이 끝나면 서버 비밀값을 교체하거나 서비스를 중지하세요.
+- API: `GET /api/health`, `POST /api/judge` (`X-Demo-Token` 필수). 입력 `{goal,url,title}`. 출력 `{source,related,confidence,reason,model}`. 오류는 400/401/403/429/503.
+- Worker 원본은 `ai-server/worker/index.js`, 배포 빌드는 `ai-server/scripts/build.mjs`입니다. 실제 Sites 프로젝트 식별값·Git 인증 정보는 공개 소스에서 제외합니다.
+
+## 판단과 실패 처리
+
+1. 사용자가 지정한 허용/방해 도메인 규칙을 우선 적용합니다. 하위 도메인을 포함하며 목록 충돌은 거절합니다.
+2. 미등록 사이트는 AI에 목적·도메인·제목만 전달합니다. 전체 URL의 경로·쿼리·해시, 본문·입력값은 전달하지 않습니다.
+3. `unrelated`이며 모델 신뢰도가 0.8 이상일 때만 경고합니다. 신뢰도는 검증된 확률이 아닙니다. 불확실하면 미분류로 둡니다.
+4. 응답은 최대 5분 메모리 캐시, 실패는 30초 후 재시도합니다. 네트워크 요청은 버튼 동작을 막지 않으며, 탭 이동·제목 변경·세션 종료 후 오래된 응답은 적용하지 않습니다.
+5. 실패 시 등록된 규칙으로 작동합니다. 미등록은 미분류로 남기며 화면에 규칙 기반 대체라고 표시합니다.
+6. 같은 도메인 경고는 2분 쿨다운. ‘이번만 허용’은 현재 세션의 탭·도메인 예외입니다. 다른 도메인 이동·탭 닫기·재시작·종료 시 해제됩니다.
+
+## 개인정보·한계
+
+- 목적과 제목에는 민감한 정보가 있을 수 있습니다. AI 전송 체크를 끄면 사이트 규칙으로만 동작합니다. 웹앱의 AI 체험도 별도 동의 체크를 제공합니다.
+- 로컬에는 설정, 연결코드, 현재 세션·도메인·마지막 판단, 날짜별 합계(최근 90일)를 저장합니다. 페이지 제목·전체 URL·방문 이력 목록은 저장하지 않습니다.
+- 서버 코드는 입력·키를 로그나 DB에 저장하지 않습니다. 호스팅 및 모델 제공자의 일반 요청 처리 정책은 적용됩니다.
+- API는 연결코드 확인과 허용 출처 검사를 사용합니다. IP당 분당 20회 제한은 인스턴스 메모리 기준의 보조 제한이며 전역 사용량 한도가 아닙니다. 상용 서비스에는 사용자별 인증과 영속 쿼터가 추가로 필요합니다.
+- 일반 Chrome 창의 활성 HTTP/HTTPS 탭에서 진행 중인 시간만 집계하며, 방해 사이트 시간도 포함됩니다. 실제 집중도·시선·다른 앱·사람의 자리 비움은 측정하지 않습니다.
+- 일시정지·휴식·브라우저 밖 시간·이 웹앱 탭은 제외합니다. 재시작은 일시정지로 복구합니다. 90초 초과 관찰 공백은 제외하여 과소 집계될 수 있습니다.
+- `chrome://`, 웹 스토어 등에는 경고 주입이 불가능합니다. Windows 알림/집중 지원 설정에 따라 시스템 알림이 보이지 않을 수 있습니다.
+- 규칙의 설정과 오탐은 사용자가 수정할 수 있고 모든 경고는 닫을 수 있습니다. 건강 상태나 디지털 과의존을 진단하지 않습니다.
+
+## Chrome 권한
+
+`storage`: 로컬 기록/연결코드, `tabs`: 활성 URL·제목과 탭 이벤트, `alarms`: 시간/휴식 복구, `notifications`: 알림, `scripting`: 경고 주입, HTTP/HTTPS 접근: 사용자 지정 사이트 감지·주입과 AI 서버 요청.
+웹앱 연결 스크립트는 `https://vivian715037-maker.github.io/dasi-purpose/*`에서만 작동합니다. 웹앱에 제공하는 상태에는 연결코드나 API 키가 없습니다.
+
+## 개발·검증
+
+실행에는 Node.js·서버 설치가 필요하지 않습니다. 개발 검사는 다음과 같습니다.
+
+```powershell
+npm.cmd --prefix extension run check
+npm.cmd --prefix extension test
+npm.cmd --prefix ai-server test
+```
+
+선택 브라우저 검사는 Playwright가 있는 환경에서 `qa` 스크립트로 실행합니다. `production-ai.py`는 로컬 시연 연결 설정을 읽어 실제 배포 API를 검증합니다. 모든 테스트 프로필은 임시 프로필입니다. 개인 Chrome 프로필은 변경하지 않습니다.
+
+## GitHub Pages 재배포
+
+이 저장소의 main 브랜치 `/docs`가 게시 원본입니다. 수정 후 커밋·푸시하면 다시 배포됩니다. 확장을 변경했다면 `docs/extension.zip`도 갱신해야 합니다. 연결코드와 API 키는 커밋하지 마세요.
+
+```powershell
+git add extension docs qa ai-server/worker ai-server/scripts ai-server/tests ai-server/package.json README.md TEST_REPORT.md .gitignore
+git commit -m "Update AI wellbeing app"
+git push origin main
+git rev-parse HEAD
+git ls-remote origin refs/heads/main
+```
+
+## 발표 한 문장
+
+“목적과 사이트의 관련성을 AI가 제목 기준으로 추정해 스스로 돌아올 기회를 주고, AI가 연결되지 않아도 기존 규칙으로 계속 동작하는 디지털 웰빙 도우미입니다.”

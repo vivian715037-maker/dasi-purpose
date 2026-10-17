@@ -1,0 +1,17 @@
+node_modules/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+Thumbs.db
+test-results/
+playwright-report/
+*.zip
+**/connection.local.json
+AI_연결코드.txt
+ai-server/.git/
+ai-server/dist/
+ai-server/.openai/
+*.tar.gz
+!docs/extension.zip

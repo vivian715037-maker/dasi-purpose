@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "다시, 목적 — 디지털 웰빙 도우미",
+  "version": "2.0.0",
+  "description": "인터넷을 켠 목적을 기억하고, 잠깐의 휴식으로 일상에 돌아오세요. 서버 없이 내 기기에만 기록합니다.",
+  "permissions": ["storage", "tabs", "alarms", "notifications", "scripting"],
+  "host_permissions": ["http://*/*", "https://*/*"],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "action": { "default_popup": "popup.html", "default_title": "다시, 목적", "default_icon": "icons/icon128.png" },
+  "options_page": "dashboard.html",
+  "content_scripts": [{"matches":["https://vivian715037-maker.github.io/dasi-purpose/*"],"js":["bridge.js"],"run_at":"document_start"}],
+  "icons": { "128": "icons/icon128.png" },
+  "content_security_policy": { "extension_pages": "script-src 'self'; object-src 'self'" }
+}
