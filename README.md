@@ -35,7 +35,7 @@
 - OpenRouter API 키는 서버 런타임 secret에만 존재합니다. 브라우저 JS·확장·GitHub·ZIP에 포함하지 않습니다.
 - 연결코드는 제공받은 시연 참가자의 서버 호출을 허용하는 별도 코드입니다. API 키가 아니며 공개 저장소에는 올리지 않습니다. 공유한 사람은 AI를 호출할 수 있으므로 시연이 끝나면 서버 비밀값을 교체하거나 서비스를 중지하세요.
 - API: `GET /api/health`, `POST /api/judge` (`X-Demo-Token` 필수). 입력 `{goal,url,title}`. 출력 `{source,related,confidence,reason,model}`. 오류는 400/401/403/429/503.
-- Worker 원본은 `ai-server/worker/index.js`, 배포 빌드는 `ai-server/scripts/build.mjs`입니다. 실제 Sites 프로젝트 식별값·Git 인증 정보는 공개 소스에서 제외합니다.
+- Worker 원본은 `server/worker/index.js`, 배포 빌드는 `server/scripts/build.mjs`입니다. 실제 Sites 프로젝트 식별값·Git 인증 정보는 공개 소스에서 제외합니다.
 
 ## 판단과 실패 처리
 
@@ -69,7 +69,7 @@
 ```powershell
 npm.cmd --prefix extension run check
 npm.cmd --prefix extension test
-npm.cmd --prefix ai-server test
+npm.cmd --prefix server test
 ```
 
 선택 브라우저 검사는 Playwright가 있는 환경에서 `qa` 스크립트로 실행합니다. `production-ai.py`는 로컬 시연 연결 설정을 읽어 실제 배포 API를 검증합니다. 모든 테스트 프로필은 임시 프로필입니다. 개인 Chrome 프로필은 변경하지 않습니다.
@@ -79,7 +79,7 @@ npm.cmd --prefix ai-server test
 이 저장소의 main 브랜치 `/docs`가 게시 원본입니다. 수정 후 커밋·푸시하면 다시 배포됩니다. 확장을 변경했다면 `docs/extension.zip`도 갱신해야 합니다. 연결코드와 API 키는 커밋하지 마세요.
 
 ```powershell
-git add extension docs qa ai-server/worker ai-server/scripts ai-server/tests ai-server/package.json README.md TEST_REPORT.md .gitignore
+git add extension docs qa server README.md TEST_REPORT.md .gitignore
 git commit -m "Update AI wellbeing app"
 git push origin main
 git rev-parse HEAD
@@ -89,3 +89,4 @@ git ls-remote origin refs/heads/main
 ## 발표 한 문장
 
 “목적과 사이트의 관련성을 AI가 제목 기준으로 추정해 스스로 돌아올 기회를 주고, AI가 연결되지 않아도 기존 규칙으로 계속 동작하는 디지털 웰빙 도우미입니다.”
+

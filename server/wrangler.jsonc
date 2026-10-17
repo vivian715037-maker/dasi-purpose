@@ -1,0 +1,6 @@
+{
+  "name":"dasi-purpose-ai",
+  "main":"worker/index.js",
+  "compatibility_date":"2026-10-17",
+  "vars":{"WEB_ORIGIN":"https://vivian715037-maker.github.io"}
+}

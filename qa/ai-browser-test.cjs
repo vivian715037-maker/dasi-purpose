@@ -1,0 +1,66 @@
+const {chromium}=require('playwright-core');const assert=require('node:assert/strict');
+const fs=require('node:fs'),path=require('node:path'),os=require('node:os');
+const root=path.resolve(__dirname,'..'),webUrl='https://vivian715037-maker.github.io/dasi-purpose/';
+async function main(){
+ const profile=fs.mkdtempSync(path.join(os.tmpdir(),'dasi-ai-qa-'));
+ const context=await chromium.launchPersistentContext(profile,{channel:'chrome',headless:true,viewport:{width:1280,height:1000},args:['--enable-unsafe-extension-debugging'],ignoreDefaultArgs:['--disable-extensions']});
+ const errors=[];context.on('page',p=>p.on('pageerror',e=>errors.push(e.message)));
+ let standalone;
+ try{
+  const cdp=await context.browser().newBrowserCDPSession();await cdp.send('Extensions.loadUnpacked',{path:path.join(root,'extension')});
+  const worker=context.serviceWorkers()[0]||await context.waitForEvent('serviceworker');
+  const snap=()=>worker.evaluate(async()=> (await chrome.storage.local.get('state')).state);
+  const wait=async(fn)=>{for(let i=0;i<160;i++){const s=await snap();if(fn(s))return s;await new Promise(r=>setTimeout(r,150));}throw Error('State timeout: '+JSON.stringify(await snap()));};
+  const app=await context.newPage();await app.goto(webUrl);await app.locator('#extension-status').filter({hasText:'확장 연결됨'}).waitFor({timeout:15000});
+  console.log('Live Pages ↔ extension bridge: PASS');
+  await app.locator('#sample-study').click();await app.locator('#judge').click();
+  await app.locator('#result-label').filter({hasText:'목적과 관련 있어요'}).waitFor({timeout:22000});
+  assert.match(await app.locator('#result-source').textContent(),/LIVE AI/);
+  await app.locator('#sample-game').click();await app.locator('#judge').click();
+  await app.locator('#result-label').filter({hasText:'처음의 목적'}).waitFor({timeout:22000});
+  console.log('Live AI study/game preview: PASS');
+  await app.screenshot({path:path.join(root,'test-results/ai-web.png'),fullPage:true});
+  await app.locator('#blocked').fill('');await app.locator('#interval').fill('30');await app.locator('#start').click();
+  await app.locator('#live-session').waitFor({state:'visible'});
+  await worker.evaluate(async()=>{const {state}=await chrome.storage.local.get('state');state.settings.notifications=false;await chrome.storage.local.set({state});});
+  await context.route('https://youtube.com/**',r=>r.fulfill({contentType:'text/html; charset=utf-8',body:'<!doctype html><meta charset="utf-8"><title>중학교 수학 일차방정식 개념 강의</title><body style="font-family:sans-serif;background:#f5f5ed;padding:50px"><h1>실제 확장의 AI 탭 감지 검증</h1><p>페이지 제목을 수학 강의에서 게임 영상으로 변경해 확인합니다.</p></body>'}));
+  await context.route('https://wikipedia.org/**',r=>r.fulfill({contentType:'text/html',body:'<title>Math</title><h1>Math study</h1>'}));
+  const tab=await context.newPage();await tab.goto('https://youtube.com/watch?v=qa-only');await tab.bringToFront();
+  await wait(s=>s.active?.source==='ai'&&s.active.category==='allowed');
+  assert.equal(await tab.locator('[data-wellbeing-overlay]').count(),0);
+  await tab.evaluate(()=>{document.title='리그오브레전드 게임 하이라이트 웃긴 영상 모음';});
+  await wait(s=>s.active?.source==='ai'&&s.active.category==='blocked');
+  await tab.locator('[data-wellbeing-overlay]').waitFor({state:'attached'});
+  await tab.screenshot({path:path.join(root,'test-results/ai-warning.png'),fullPage:true});
+  await tab.keyboard.press('Enter');await tab.waitForURL('https://wikipedia.org/');
+  await wait(s=>s.active?.host==='wikipedia.org');
+  console.log('Actual tab title change → live AI warning → goal return: PASS');
+  // Inject an actual 503 response at the extension network boundary, leaving the live server intact.
+  await worker.evaluate(()=>{globalThis.__originalFetch=globalThis.fetch;globalThis.fetch=async(...args)=>String(args[0]).includes('/api/judge')?new Response('',{status:503}):globalThis.__originalFetch(...args);});
+  await tab.goto('https://youtube.com/watch?v=failure-test');
+  await tab.evaluate(()=>{document.title='네트워크 실패 확인용 다른 제목';});
+  await wait(s=>s.active?.source==='fallback'&&s.active.category==='unknown');
+  assert.equal(await tab.locator('[data-wellbeing-overlay]').count(),0);
+  console.log('Injected 503 → rules/unknown without false block: PASS');
+  await worker.evaluate(()=>{globalThis.fetch=globalThis.__originalFetch;});
+  await app.bringToFront();await app.locator('#reconnect').click();await app.locator('#end').click();
+  await wait(s=>s.session.status==='ended');
+  await app.locator('#fallback-demo').click();assert.match(await app.locator('#result-source').textContent(),/RULE FALLBACK/);
+  await app.reload();await app.locator('#extension-status').filter({hasText:'확장 연결됨'}).waitFor();
+  await app.locator('#stat-returns').filter({hasText:'1'}).waitFor();
+  // A fresh browser has no extension: check CORS and standalone manual AI demo.
+  standalone=await chromium.launch({channel:'chrome',headless:true});
+  const mobile=await standalone.newPage({viewport:{width:375,height:900}});await mobile.goto(webUrl);
+  await mobile.locator('#extension-status').filter({hasText:'확장 미연결'}).waitFor();
+  const token=JSON.parse(fs.readFileSync(path.join(root,'extension/connection.local.json'),'utf8')).token;
+  await mobile.locator('#connection-code').fill(token);await mobile.locator('#connect-ai').click();
+  await mobile.locator('#sample-study').click();await mobile.locator('#judge').click();
+  await mobile.locator('#result-label').filter({hasText:'목적과 관련 있어요'}).waitFor({timeout:22000});
+  assert.equal(await mobile.evaluate(()=>document.documentElement.scrollWidth),375);
+  await mobile.screenshot({path:path.join(root,'test-results/ai-mobile.png'),fullPage:true});
+  assert.equal(errors.length,0,errors.join('\n'));
+  const summary={result:'PASS',browser:context.browser().version(),pages:webUrl,liveAI:true,titleDetection:true,aiWarning:true,goalReturn:true,real503Fallback:true,webBridge:true,standaloneCORS:true,mobile375:true,pageErrors:errors};
+  fs.writeFileSync(path.join(root,'test-results/ai-browser.json'),JSON.stringify(summary,null,2));console.log(JSON.stringify(summary,null,2));
+ }finally{await standalone?.close();await context.close();}
+}
+main().catch(e=>{console.error(e);process.exitCode=1;});
