@@ -2,6 +2,9 @@ import {test} from 'node:test';import assert from 'node:assert/strict';import wo
 const env={WEB_ORIGIN:'https://app.example',OPENROUTER_API_KEY:'server-only-secret',DEMO_ACCESS_TOKEN:'demo-code'};
 const request=(body,token='demo-code',origin=env.WEB_ORIGIN)=>new Request('https://worker.example/api/judge',{method:'POST',headers:{'Content-Type':'application/json','Origin':origin,'X-Demo-Token':token},body:JSON.stringify(body)});
 test('서버: 인증·CORS·입력 검증 및 provider 오류 503',async()=>{
+ assert.equal((await worker.fetch(new Request('https://worker.example/api/connection',{headers:{'X-Demo-Token':'wrong'}}),env)).status,401);
+ const verified=await worker.fetch(new Request('https://worker.example/api/connection',{headers:{'X-Demo-Token':'demo-code'}}),env);
+ assert.equal(verified.status,200);assert.equal((await verified.json()).configured,true);
  const body={goal:'수학',url:'https://youtube.com/',title:'강의'};
  assert.equal((await worker.fetch(request(body,'wrong'),env)).status,401);
  assert.equal((await worker.fetch(request(body,'demo-code','https://evil.example'),env)).status,403);

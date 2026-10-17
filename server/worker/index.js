@@ -13,6 +13,10 @@ export default {
     if (!allowed) return out({error:'origin_not_allowed'},403);
     if (request.method === 'OPTIONS') return new Response(null,{status:204,headers:headers(origin)});
     if (path === '/api/health' && request.method === 'GET') return out({ok:true,configured:!!env.OPENROUTER_API_KEY,model:MODEL});
+    if (path === '/api/connection' && request.method === 'GET') {
+      if (!env.DEMO_ACCESS_TOKEN || request.headers.get('X-Demo-Token') !== env.DEMO_ACCESS_TOKEN) return out({error:'connection_code_required'},401);
+      return out({ok:true,configured:!!env.OPENROUTER_API_KEY});
+    }
     if (path !== '/api/judge') return out({error:'not_found'},404);
     if (request.method !== 'POST') return out({error:'method_not_allowed'},405);
     if (!env.DEMO_ACCESS_TOKEN || request.headers.get('X-Demo-Token') !== env.DEMO_ACCESS_TOKEN) return out({error:'connection_code_required'},401);

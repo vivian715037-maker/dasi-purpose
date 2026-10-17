@@ -1,6 +1,6 @@
 import { SERVER_URL } from './config.js';
 import { validateSettings, classify, hostFromUrl, localDay } from './core.js';
-import { judgeSite, aiCategory } from './ai.js';
+import { judgeSite, aiCategory, verifyConnection } from './ai.js?v=auth2';
 const $=id=>document.getElementById(id);
 const pending=new Map();let seq=0, connected=false,state=null,busy=false;
 window.addEventListener('message',event=>{
@@ -29,15 +29,21 @@ function render(){
   if(state.aiConnected)$('code-status').textContent='확장프로그램에 연결코드가 저장되어 있습니다. API 키는 서버에만 있습니다.';
 }
 async function refresh(showError=false){try{const r=await bridge({type:'GET'});state=r.state;connected=true;}catch(e){connected=false;if(showError)feedback(e.message,true);}render();}
-async function command(type,extra={}){try{const r=await bridge({type,...extra},5000);state=r.state;render();feedback('반영했어요. 다른 사이트 탭을 방문해 보세요.');}catch(e){feedback(e.message,true);}}
+async function command(type,extra={}){try{const r=await bridge({type,...extra},type==='CONNECT'?12000:5000);state=r.state;render();feedback('반영했어요. 다른 사이트 탭을 방문해 보세요.');return true;}catch(e){feedback(e.message,true);return false;}}
 $('session-form').onsubmit=event=>{event.preventDefault();try{command('START',{settings:formSettings()});}catch(e){feedback(e.message,true);}};
 $('pause').onclick=()=>command(state.session.status==='running'?'PAUSE':'RESUME');
 for(const [id,type]of[['end','END'],['rest','BREAK'],['extend','EXTEND']])$(id).onclick=()=>command(type);
 $('reconnect').onclick=()=>refresh(true);
 $('connect-ai').onclick=async()=>{
-  const token=$('connection-code').value.trim();if(token.length<16||token.length>200){feedback('시연 연결코드를 확인해 주세요.',true);return;}
-  sessionStorage.setItem('dasi-code',token);$('connection-code').value='';
-  if(connected)await command('CONNECT',{token});else feedback('이 탭에 연결코드를 저장했어요. AI 판단을 체험해 보세요.');
+  const token=$('connection-code').value.trim();$('connect-ai').disabled=true;$('connect-ai').textContent='서버 인증 확인 중…';
+  try{
+    await verifyConnection(SERVER_URL,token);
+    if(connected&&!await command('CONNECT',{token}))return;
+    sessionStorage.setItem('dasi-code',token);$('connection-code').value='';
+    $('code-status').textContent='서버 인증 확인 완료 · AI를 사용할 수 있어요.';
+    feedback('AI 연결을 확인했어요. 이제 AI 관련성 판단하기를 눌러 보세요.');
+  }catch(e){feedback(e.message,true);$('code-status').textContent='연결 실패 · 코드를 저장하지 않았습니다. API 키가 아닌 시연 연결코드를 입력하세요.';}
+  finally{$('connect-ai').disabled=false;$('connect-ai').textContent='연결코드 저장';}
 };
 function showResult(result){
   const category=result.source==='ai'?aiCategory(result):result.category;
@@ -57,7 +63,16 @@ $('judge').onclick=async()=>{
     if(!goal)throw new Error('사용 목적을 입력해 주세요.');
     const url=$('test-url').value,title=$('test-title').value;
     let result;
-    if(connected)result=(await bridge({type:'PREVIEW',goal,url,title},18000)).result;
+    if(connected){
+      try{result=(await bridge({type:'PREVIEW',goal,url,title},18000)).result;}
+      catch(e){
+        const token=sessionStorage.getItem('dasi-code');
+        if(!token||!e.message.includes('401'))throw e;
+        await verifyConnection(SERVER_URL,token);
+        const synced=await bridge({type:'CONNECT',token},12000);state=synced.state;
+        result=(await bridge({type:'PREVIEW',goal,url,title},18000)).result;
+      }
+    }
     else{const token=sessionStorage.getItem('dasi-code');if(!token)throw new Error('시연 연결코드를 먼저 저장해 주세요.');result=await judgeSite(SERVER_URL,token,goal,url,title);}
     showResult(result);
   }catch(e){try{showResult(fallback(`${e.message} · 기존 사이트 규칙으로 판단했습니다.`));}catch(validation){feedback(validation.message,true);}}

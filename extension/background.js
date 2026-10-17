@@ -1,6 +1,6 @@
 import { freshState, validateSettings, classify, hostFromUrl, dayStats, settle, COOLDOWN } from './core.js';
 import { SERVER_URL, WEB_URL } from './config.js';
-import { judgeSite, aiCategory } from './ai.js';
+import { judgeSite, aiCategory, verifyConnection } from './ai.js';
 
 const aiCache = new Map(), aiPending = new Set();
 let bootstrapAttempted=false;
@@ -156,6 +156,7 @@ async function command(message, sender) {
   switch (message.type) {
     case 'CONNECT': {
       if(typeof message.token!=='string'||message.token.length<16||message.token.length>200) throw new Error('올바른 연결코드를 입력해 주세요.');
+      await verifyConnection(SERVER_URL,message.token);
       await chrome.storage.local.set({connection:{token:message.token.trim()}}); aiCache.clear();state.aiConnected=true;break;
     }
     case 'GET': break;

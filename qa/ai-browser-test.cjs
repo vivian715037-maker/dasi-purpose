@@ -53,7 +53,11 @@ async function main(){
   const mobile=await standalone.newPage({viewport:{width:375,height:900}});await mobile.goto(webUrl);
   await mobile.locator('#extension-status').filter({hasText:'확장 미연결'}).waitFor();
   const token=JSON.parse(fs.readFileSync(path.join(root,'extension/connection.local.json'),'utf8')).token;
+  await mobile.locator('#connection-code').fill('wrong-connection-code-for-test');await mobile.locator('#connect-ai').click();
+  await mobile.locator('#code-status').filter({hasText:'연결 실패'}).waitFor();
+  assert.equal(await mobile.evaluate(()=>sessionStorage.getItem('dasi-code')),null);
   await mobile.locator('#connection-code').fill(token);await mobile.locator('#connect-ai').click();
+  await mobile.locator('#code-status').filter({hasText:'서버 인증 확인 완료'}).waitFor();
   await mobile.locator('#sample-study').click();await mobile.locator('#judge').click();
   await mobile.locator('#result-label').filter({hasText:'목적과 관련 있어요'}).waitFor({timeout:22000});
   assert.equal(await mobile.evaluate(()=>document.documentElement.scrollWidth),375);
