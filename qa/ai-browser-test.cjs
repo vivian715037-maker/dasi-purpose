@@ -13,12 +13,8 @@ async function main(){
   const wait=async(fn)=>{for(let i=0;i<160;i++){const s=await snap();if(fn(s))return s;await new Promise(r=>setTimeout(r,150));}throw Error('State timeout: '+JSON.stringify(await snap()));};
   const app=await context.newPage();await app.goto(webUrl);await app.locator('#extension-status').filter({hasText:'확장 연결됨'}).waitFor({timeout:15000});
   console.log('Live Pages ↔ extension bridge: PASS');
-  await app.locator('#sample-study').click();await app.locator('#judge').click();
-  await app.locator('#result-label').filter({hasText:'목적과 관련 있어요'}).waitFor({timeout:22000});
-  assert.match(await app.locator('#result-source').textContent(),/LIVE AI/);
-  await app.locator('#sample-game').click();await app.locator('#judge').click();
-  await app.locator('#result-label').filter({hasText:'처음의 목적'}).waitFor({timeout:22000});
-  console.log('Live AI study/game preview: PASS');
+  assert.equal(await app.locator('#judge, #test-url, #sample-study, #fallback-demo').count(),0);
+  console.log('Production UI: manual AI test panel removed');
   await app.screenshot({path:path.join(root,'test-results/ai-web.png'),fullPage:true});
   await app.locator('#allowed').fill('wikipedia.org\nyoutube.com');
   await app.locator('#blocked').fill('');await app.locator('#interval').fill('30');await app.locator('#start').click();
@@ -53,10 +49,9 @@ async function main(){
   await worker.evaluate(()=>{globalThis.fetch=globalThis.__originalFetch;});
   await app.bringToFront();await app.locator('#reconnect').click();await app.locator('#end').click();
   await wait(s=>s.session.status==='ended');
-  await app.locator('#fallback-demo').click();assert.match(await app.locator('#result-source').textContent(),/RULE FALLBACK/);
   await app.reload();await app.locator('#extension-status').filter({hasText:'확장 연결됨'}).waitFor();
   await app.locator('#stat-returns').filter({hasText:'1'}).waitFor();
-  // A fresh browser has no extension: check CORS and standalone manual AI demo.
+  // A fresh browser has no extension: check CORS and connection-code validation without the extension.
   standalone=await chromium.launch({channel:'chrome',headless:true});
   const mobile=await standalone.newPage({viewport:{width:375,height:900}});await mobile.goto(webUrl);
   await mobile.locator('#extension-status').filter({hasText:'확장 미연결'}).waitFor();
@@ -66,12 +61,10 @@ async function main(){
   assert.equal(await mobile.evaluate(()=>sessionStorage.getItem('dasi-code')),null);
   await mobile.locator('#connection-code').fill(token);await mobile.locator('#connect-ai').click();
   await mobile.locator('#code-status').filter({hasText:'서버 인증 확인 완료'}).waitFor();
-  await mobile.locator('#sample-study').click();await mobile.locator('#judge').click();
-  await mobile.locator('#result-label').filter({hasText:'목적과 관련 있어요'}).waitFor({timeout:22000});
   assert.equal(await mobile.evaluate(()=>document.documentElement.scrollWidth),375);
   await mobile.screenshot({path:path.join(root,'test-results/ai-mobile.png'),fullPage:true});
   assert.equal(errors.length,0,errors.join('\n'));
-  const summary={result:'PASS',browser:context.browser().version(),pages:webUrl,liveAI:true,titleDetection:true,aiWarning:true,goalReturn:true,real503Fallback:true,webBridge:true,standaloneCORS:true,mobile375:true,pageErrors:errors};
+  const summary={result:'PASS',browser:context.browser().version(),pages:webUrl,liveAI:true,titleDetection:true,aiWarning:true,goalReturn:true,real503Fallback:true,webBridge:true,connectionValidation:true,mobile375:true,pageErrors:errors};
   fs.writeFileSync(path.join(root,'test-results/ai-browser.json'),JSON.stringify(summary,null,2));console.log(JSON.stringify(summary,null,2));
  }finally{await standalone?.close();await context.close();}
 }

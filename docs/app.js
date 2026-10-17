@@ -1,8 +1,8 @@
 import { SERVER_URL } from './config.js';
-import { validateSettings, classify, hostFromUrl, localDay } from './core.js';
-import { judgeSite, aiCategory, verifyConnection } from './ai.js?v=auth2';
+import { validateSettings, localDay } from './core.js';
+import { verifyConnection } from './ai.js?v=auth2';
 const $=id=>document.getElementById(id);
-const pending=new Map();let seq=0, connected=false,state=null,busy=false;
+const pending=new Map();let seq=0, connected=false,state=null;
 window.addEventListener('message',event=>{
   if(event.source!==window||event.origin!==location.origin||event.data?.channel!=='DASI_EXTENSION')return;
   const handler=pending.get(event.data.id);if(handler){pending.delete(event.data.id);handler(event.data);}
@@ -16,7 +16,7 @@ function feedback(text,error=false){$('feedback').hidden=false;$('feedback').tex
 function formSettings(){return validateSettings({goal:$('goal').value,plannedMinutes:$('planned').value,breakMinutes:$('interval').value,allowed:$('allowed').value,blocked:$('blocked').value,aiEnabled:$('ai-enabled').checked,notifications:true});}
 function format(ms){return `${String(Math.floor(ms/60000)).padStart(2,'0')}:${String(Math.floor(ms/1000)%60).padStart(2,'0')}`;}
 function render(){
-  $('extension-status').textContent=connected?'Chrome 확장 연결됨 · 다른 탭 감지 가능':'확장 미연결 · 아래 AI 체험은 연결코드로 이용 가능';
+  $('extension-status').textContent=connected?'Chrome 확장 연결됨 · 다른 탭 감지 가능':'확장 미연결 · 확장프로그램 설치 후 다시 연결해 주세요';
   $('extension-dot').className=`dot ${connected?'running':''}`;
   $('start').disabled=!connected;
   if(!state)return;
@@ -41,44 +41,8 @@ $('connect-ai').onclick=async()=>{
     if(connected&&!await command('CONNECT',{token}))return;
     sessionStorage.setItem('dasi-code',token);$('connection-code').value='';
     $('code-status').textContent='서버 인증 확인 완료 · AI를 사용할 수 있어요.';
-    feedback('AI 연결을 확인했어요. 이제 AI 관련성 판단하기를 눌러 보세요.');
+    feedback('AI 연결을 확인했어요. 목적을 시작하고 다른 사이트 탭을 방문해 보세요.');
   }catch(e){feedback(e.message,true);$('code-status').textContent='연결 실패 · 코드를 저장하지 않았습니다. API 키가 아닌 시연 연결코드를 입력하세요.';}
   finally{$('connect-ai').disabled=false;$('connect-ai').textContent='연결코드 저장';}
 };
-function showResult(result){
-  const category=result.source==='ai'?aiCategory(result):result.category;
-  $('result').hidden=false;$('result').classList.toggle('unrelated',category==='blocked');
-  $('result-source').textContent=result.source==='ai'?'LIVE AI · 실제 AI 응답':'RULE FALLBACK · 규칙 기반';
-  $('result-label').textContent={allowed:'목적과 관련 있어요',blocked:'처음의 목적을 기억해 볼까요?',unknown:'아직 확실하지 않아요'}[category];
-  $('result-reason').textContent=result.reason;
-  $('result-confidence').textContent=result.source==='ai'?`모델: ${result.model} · 모델 신뢰도 ${Math.round(result.confidence*100)}% (검증된 확률 아님)`:'미등록 사이트를 임의로 방해 사이트로 단정하지 않습니다.';
-}
-function fallback(reason){const settings=formSettings();return{source:'fallback',category:classify(hostFromUrl($('test-url').value),settings),reason};}
-$('judge').onclick=async()=>{
-  if(busy)return;
-  if(!$('preview-consent').checked){feedback('AI 전송에 동의하려면 체크해 주세요. 규칙 기반 체험은 그대로 이용할 수 있어요.',true);return;}
-  busy=true;$('judge').disabled=true;$('judge').textContent='AI 판단 중…';
-  try{
-    const goal=state?.session&&state.session.status!=='ended'?state.session.goal:$('goal').value.trim();
-    if(!goal)throw new Error('사용 목적을 입력해 주세요.');
-    const url=$('test-url').value,title=$('test-title').value;
-    let result;
-    if(connected){
-      try{result=(await bridge({type:'PREVIEW',goal,url,title},18000)).result;}
-      catch(e){
-        const token=sessionStorage.getItem('dasi-code');
-        if(!token||!e.message.includes('401'))throw e;
-        await verifyConnection(SERVER_URL,token);
-        const synced=await bridge({type:'CONNECT',token},12000);state=synced.state;
-        result=(await bridge({type:'PREVIEW',goal,url,title},18000)).result;
-      }
-    }
-    else{const token=sessionStorage.getItem('dasi-code');if(!token)throw new Error('시연 연결코드를 먼저 저장해 주세요.');result=await judgeSite(SERVER_URL,token,goal,url,title);}
-    showResult(result);
-  }catch(e){try{showResult(fallback(`${e.message} · 기존 사이트 규칙으로 판단했습니다.`));}catch(validation){feedback(validation.message,true);}}
-  finally{busy=false;$('judge').disabled=false;$('judge').textContent='AI 관련성 판단하기';}
-};
-$('fallback-demo').onclick=()=>{try{showResult(fallback('연결 실패 상황을 체험 중입니다. AI 응답을 사용하지 않고 기존 사이트 규칙으로 판단합니다.'));}catch(e){feedback(e.message,true);}};
-$('sample-study').onclick=()=>{$('test-url').value='https://www.youtube.com/';$('test-title').value='중학교 수학 일차방정식 개념 강의';};
-$('sample-game').onclick=()=>{$('test-url').value='https://www.youtube.com/';$('test-title').value='리그오브레전드 게임 하이라이트 웃긴 영상 모음';};
 refresh();setInterval(()=>{if(!document.hidden)refresh();},5000);window.addEventListener('focus',()=>refresh());
