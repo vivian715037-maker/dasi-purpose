@@ -17,7 +17,7 @@ document.getElementById('app').innerHTML = `
     </section>
   </div><div class="stack">
     <section class="card"><div class="card-head"><h2>오늘, 나의 발걸음</h2><span class="number" id="today-label"></span></div><div class="metrics"><div class="metric wide"><span>Chrome 사용 중 세션 시간</span><strong id="stat-time">0분</strong></div><div class="metric"><strong id="stat-sessions">0</strong><span>시작한 세션</span></div><div class="metric"><strong id="stat-detections">0</strong><span>방해 사이트 경고</span></div><div class="metric"><strong id="stat-returns">0</strong><span>목표로 돌아온 횟수</span></div><div class="metric"><strong id="stat-breaks">0</strong><span>휴식 안내</span></div></div><p class="note">세션 시간에는 방해 사이트 이용도 포함돼요.<br>창을 벗어나거나 일시정지한 시간은 제외해요.</p><div class="mini-bars" id="weekly" aria-label="최근 7일 세션 시간"></div></section>
-    <section class="card"><div class="eyebrow">Small steps matter</div><h2 style="margin-top:10px">화면 밖에도,<br>좋은 하루가 있어요.</h2><p class="note">20초 먼 곳 바라보기, 가볍게 기지개 켜기.<br>작은 휴식부터 시작해 보세요.</p><p class="note">규칙 기반 도우미 · 외부 전송 없음<br>Chrome 웹사이트에서만 작동합니다. 시스템 알림은 Windows 알림·집중 지원 설정에 따라 표시되지 않을 수 있어요.</p><button id="install-help" style="margin-top:16px">설치·시연 안내</button><div id="help" class="note" hidden>Chrome 확장프로그램 페이지에서 개발자 모드를 켜고 이 extension 폴더를 로드하세요.<br><br>시연: 목적 ‘수학 공부’ → 허용 wikipedia.org → 방해 youtube.com → 시작 → 두 사이트 방문 → 경고·복귀 확인.<br><br>휴식 간격을 1분으로 설정하면 빠르게 테스트할 수 있어요. 경고가 안 보이면 사이트 접근 권한을 확인하고 웹페이지를 새로고침하세요.</div></section>
+    <section class="card"><div class="eyebrow">Small steps matter</div><h2 style="margin-top:10px">화면 밖에도,<br>좋은 하루가 있어요.</h2><p class="note">20초 먼 곳 바라보기, 가볍게 기지개 켜기.<br>작은 휴식부터 시작해 보세요.</p><p class="note">AI 추정 + 규칙 기반 · 기록은 기기에 저장<br>Chrome 웹사이트에서만 작동합니다. 시스템 알림은 Windows 알림·집중 지원 설정에 따라 표시되지 않을 수 있어요.</p><button id="install-help" style="margin-top:16px">설치·시연 안내</button><div id="help" class="note" hidden>Chrome 확장프로그램 페이지에서 개발자 모드를 켜고 이 extension 폴더를 로드하세요.<br><br>시연: 목적 ‘수학 공부’ → 허용 wikipedia.org → 방해 youtube.com → 시작 → 두 사이트 방문 → 경고·복귀 확인.<br><br>휴식 간격을 1분으로 설정하면 빠르게 테스트할 수 있어요. 경고가 안 보이면 사이트 접근 권한을 확인하고 웹페이지를 새로고침하세요.</div></section>
   </div></div>
   <div class="notice" id="system-notice" hidden></div><div id="feedback" role="status" aria-live="polite" hidden></div><footer class="footer"><span>나를 통제하는 대신, 나의 선택을 돕습니다.</span><span>LOCAL ONLY · DIGITAL WELLBEING</span></footer>`;
 if (isDashboard) { $('dashboard-link').textContent = '나만의 디지털 웰빙'; $('dashboard-link').removeAttribute('href'); }
@@ -128,3 +128,4 @@ if (globalThis.chrome?.runtime?.id) {
   $('submit').disabled = true;
   feedback('이 화면은 Chrome 확장프로그램 전용입니다. extension 폴더를 로드해 주세요.', true);
 }
+

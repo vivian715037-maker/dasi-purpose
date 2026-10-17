@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "다시, 목적 — 디지털 웰빙 도우미",
   "version": "2.0.0",
-  "description": "인터넷을 켠 목적을 기억하고, 잠깐의 휴식으로 일상에 돌아오세요. 서버 없이 내 기기에만 기록합니다.",
+  "description": "AI로 목적과 사이트의 관련성을 추정하고 복귀·휴식을 돕습니다. AI 실패 시 사이트 규칙으로 작동하고 기록은 로컬에 저장합니다.",
   "permissions": ["storage", "tabs", "alarms", "notifications", "scripting"],
   "host_permissions": ["http://*/*", "https://*/*"],
   "background": { "service_worker": "background.js", "type": "module" },
